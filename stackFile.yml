@@ -1,0 +1,78 @@
+version: '1.0'
+services:
+  - name: db
+    type: mariadb
+    version: 10.2
+    configuration: StandAlone
+    database: opencart
+    username: opencart
+    # Ask password on create
+    userPassword: null
+    password: null
+    ports:
+      - 3306
+    remoteAccess: false
+    comments:
+      username: Database will be created with the same name
+    deployTo:
+      - opencart
+
+  - name: opencart
+    type: docker
+    image: d2cio/opencart
+    version: 3
+    ports:
+      - 9000
+    configFiles:
+      - dest: $MAIN_PATH/upload/config.php
+        src: ./configs/config.php
+      - dest: $MAIN_PATH/upload/admin/config.php
+        src: ./configs/admin/config.php
+    localDeps: |
+      tar -xf /var/www/opencart_3.tar -C $MAIN_PATH --keep-newer-files
+    initialCommands: |
+      php $MAIN_PATH/upload/install/cli_install.php install --db_hostname $DB_HOSTNAME --db_username $DB_USERNAME --db_password $DB_PASSWORD --db_database $DB_DATABASE --username $ADMIN_USERNAME --password $ADMIN_PASSWORD --email $ADMIN_EMAIL --http_server /
+      rm -rf $MAIN_PATH/upload/install
+      cp /var/www/configs/config.php $MAIN_PATH/upload/config.php
+      cp /var/www/configs/config-admin.php $MAIN_PATH/upload/admin/config.php
+      mv $MAIN_PATH/upload/system/storage/* $MAIN_PATH/storage/
+      rm -rf $MAIN_PATH/upload/system/storage
+      rm /var/www/opencart_3.tar
+      cd $MAIN_PATH
+      tar -cJf /var/www/opencart_3.tar *
+    env:
+      DIR_ROOT: "/var/www/{{=service('opencart').get('name')}}/"
+      ADMIN_USERNAME: null
+      ADMIN_PASSWORD: null
+      ADMIN_EMAIL: null
+      DB_HOSTNAME: "{{=service('db').getMasterAlias()}}"
+      DB_USERNAME: root
+      DB_PASSWORD: "{{=service('db').get('password')}}"
+      DB_DATABASE: "{{=service('db').get('database')}}"
+    volumes:
+      - directory: $MAIN_PATH/upload/catalog/view
+      - directory: $MAIN_PATH/upload/catalog/language
+      - directory: $MAIN_PATH/upload/image
+      - directory: $MAIN_PATH/storage
+    deployTo:
+      - opencart
+
+  - name: web
+    type: nginx
+    version: 1.15
+    ports:
+      - 80
+      - 443
+    remoteAccess: true
+    serviceFiles:
+      - name: opencart
+        static: true
+        src: ./configs/opencart.conf
+    deployTo:
+      - opencart
+
+hosts:
+  - name: opencart
+    requirements:
+      cores: 1
+      memory: 1
