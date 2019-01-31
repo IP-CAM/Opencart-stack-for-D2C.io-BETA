@@ -89,8 +89,8 @@ services:
         src: ./configs/config.inc.php
     localDeps: composer install
     deployTo:
-      - main
-      
+      - opencart
+
 hosts:
   - name: opencart
     requirements:
