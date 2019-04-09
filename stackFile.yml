@@ -57,6 +57,19 @@ services:
     deployTo:
       - opencart
 
+  - name: pma
+    type: docker
+    image: phpmyadmin/phpmyadmin
+    version: latest
+    ports:
+      - 80
+    remoteAccess: false
+    env:
+      PMA_HOST: "{{=service('db').getMasterAlias()}}"
+      PMA_PORT: "{{=service('db').getMainPort()}}"
+    deployTo:
+      - opencart
+
   - name: web
     type: nginx
     version: 1.15
@@ -68,26 +81,7 @@ services:
       - name: opencart
         static: true
         src: ./configs/opencart.conf
-    deployTo:
-      - opencart
-
-  - name: pma
-    type: phpApache
-    version: 7.1
-    remoteAccess: true
-    ports:
-      - 8080
-    source:
-      type: git
-      url: https://github.com/phpmyadmin/phpmyadmin
-      version: STABLE
-    extensions:
-      - mysqli
-      - opcache
-    configFiles:
-      - dest: $MAIN_PATH/config.inc.php
-        src: ./configs/config.inc.php
-    localDeps: composer install
+      - name: pma
     deployTo:
       - opencart
 
